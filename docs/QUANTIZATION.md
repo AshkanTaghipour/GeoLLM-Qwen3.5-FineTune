@@ -128,14 +128,69 @@ curl http://localhost:8080/v1/chat/completions \
 
 ---
 
-## VRAM Reality Check
+## Memory Requirements
 
-The Q4_K_M quant is ~17 GB on disk, but actual VRAM usage is higher due to KV cache and context window overhead. Expect:
+### What Actually Uses Memory
 
-- **16 GB GPU**: May fail to load Q4_K_M with default context. Reduce `-c` to 2048 or use CPU offloading.
-- **24 GB GPU**: Runs Q4_K_M and Q5_K_M comfortably at 4K context.
-- **32+ GB GPU**: Runs Q6_K or Q8_0 without issues.
-- **Apple Silicon (32 GB unified)**: Q4_K_M and Q5_K_M work well via Metal.
+VRAM usage is **not** just the GGUF file size. Total memory = model weights + KV cache + compute buffers + OS overhead.
+
+| Component | Description |
+|:----------|:------------|
+| **Model weights** | The GGUF file loaded into memory (≈ file size) |
+| **KV cache** | Grows linearly with context length — often the hidden killer |
+| **Compute buffers** | Scratch space for intermediate activations (~500 MB–1 GB) |
+| **OS/driver overhead** | CUDA/Metal runtime, ~500 MB–1 GB |
+
+### KV Cache for Qwen3.5-27B
+
+Qwen3.5-27B uses Grouped-Query Attention (GQA) with 8 KV heads, 64 layers, and head dimension 128. The KV cache formula:
+
+```
+KV cache (bytes) = 2 × num_layers × num_kv_heads × head_dim × context_length × bytes_per_element
+```
+
+At FP16 (2 bytes per element):
+
+| Context Length | KV Cache Size |
+|:---------------|:--------------|
+| 2,048 tokens | ~0.5 GB |
+| 4,096 tokens | ~1.0 GB |
+| 8,192 tokens | ~2.0 GB |
+| 16,384 tokens | ~4.0 GB |
+| 32,768 tokens | ~8.0 GB |
+
+Ollama supports KV cache quantization (Q8/Q4) which can halve or quarter these numbers.
+
+### Total VRAM Estimates (27B Model)
+
+Includes weights + KV cache at 4K context + ~1.5 GB overhead:
+
+| Quant | Weights | + KV (4K ctx) | + Overhead | **Total** |
+|:------|:--------|:--------------|:-----------|:----------|
+| Q4_K_M | ~17 GB | ~1.0 GB | ~1.5 GB | **~19.5 GB** |
+| Q5_K_M | ~19 GB | ~1.0 GB | ~1.5 GB | **~21.5 GB** |
+| Q6_K | ~22 GB | ~1.0 GB | ~1.5 GB | **~24.5 GB** |
+| Q8_0 | ~28 GB | ~1.0 GB | ~1.5 GB | **~30.5 GB** |
+
+At 8K context, add another ~1 GB. At 32K context, add ~7 GB more.
+
+### Hardware Compatibility
+
+| Hardware | VRAM/RAM | Best Quant | Max Context | Notes |
+|:---------|:---------|:-----------|:------------|:------|
+| RTX 4090 / 5090 (24 GB) | 24 GB | Q4_K_M | ~8K | Tight — use KV cache quantization for longer context |
+| RTX A5000 / A6000 (48 GB) | 48 GB | Q5_K_M or Q6_K | 32K+ | Comfortable headroom |
+| A100 (80 GB) | 80 GB | Q8_0 or Q6_K | 32K+ | No constraints |
+| Apple M2/M3 Pro (32 GB unified) | 32 GB | Q4_K_M | ~8K | Shared with OS — leave ~6 GB free |
+| Apple M2/M3 Max (64 GB unified) | 64 GB | Q5_K_M or Q6_K | 32K+ | Excellent for local dev |
+| CPU-only (64 GB RAM) | 64 GB | Q4_K_M | 4K | Works but slow (~2–5 tok/s) |
+
+### Important Caveats
+
+- **16 GB GPUs** (RTX 4080, 5060 Ti): Q4_K_M is ~17 GB for weights alone. Real-world reports confirm it **fails to load** even at reduced context. Use CPU offloading (`-ngl` partial) or a smaller model.
+- **Context is the hidden cost**: Doubling context length roughly doubles KV cache. A 32K context window on Q4_K_M pushes total VRAM to ~27 GB.
+- **Ollama KV quantization**: Ollama supports `--kv-cache-type q8_0` or `q4_0` which significantly reduces KV cache memory, enabling longer contexts on constrained hardware.
+- **Partial GPU offload**: Both llama-server and Ollama support offloading only some layers to GPU (`-ngl 40` instead of `99`), keeping the rest in system RAM. Slower but fits larger models.
 
 ---
 
