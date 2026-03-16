@@ -1,0 +1,26 @@
+# Core training framework
+torch>=2.5.0
+unsloth>=2024.12
+
+# HuggingFace ecosystem
+transformers>=4.46.0
+datasets>=3.0.0
+trl>=0.12.0
+peft>=0.13.0
+accelerate>=1.0.0
+
+# Optimizers & quantization
+bitsandbytes>=0.44.0
+
+# Metrics & logging
+tensorboard>=2.18.0
+
+# Testing
+pytest>=8.0.0
+
+# Tutorial PDF generation
+reportlab>=4.0
+
+# Tokenization (required by transformers)
+sentencepiece>=0.2.0
+protobuf>=4.25.0

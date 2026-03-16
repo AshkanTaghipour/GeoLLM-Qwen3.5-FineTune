@@ -1,0 +1,38 @@
+# Credentials - NEVER commit these
+credentials.txt
+*.env
+
+# Model weights & outputs (too large for git)
+models/
+outputs/
+finetuned_lora/
+finetuned_merged/
+processed_data/
+benchmark_results/
+logs/
+wandb/
+
+# Legacy data (v1)
+training_splits/
+
+# Unsloth cache
+unsloth_compiled_cache/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Conda environment
+qwen_finetune_env/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code
+.claude/
