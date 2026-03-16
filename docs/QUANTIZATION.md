@@ -25,6 +25,60 @@ Unsloth's Dynamic 2.0 quantization selectively adjusts precision per-layer rathe
 
 ---
 
+## Machine Requirements for Quantization
+
+Conversion and quantization happen on **CPU and system RAM** — no GPU required. However, the process is memory- and disk-intensive because the full model weights must be loaded and transformed.
+
+### System RAM
+
+| Step | Peak RAM Usage | Notes |
+|:-----|:---------------|:------|
+| `convert_hf_to_gguf.py` (safetensors → F16 GGUF) | **~60 GB** | Loads all bf16 weight tensors into memory, writes sequentially |
+| `llama-quantize` (F16 GGUF → Q4/Q5/Q6) | **~55 GB** | Reads F16 GGUF, quantizes per-tensor, writes output |
+| Ollama `-q` flag (safetensors → quantized) | **~60 GB** | Combines both steps internally |
+
+**Minimum: 64 GB system RAM.** With less, the process will either OOM-kill or thrash swap so badly it takes hours. 128 GB is comfortable.
+
+If you only have 32 GB RAM, you can use `--split` options or memory-mapped I/O, but expect very slow conversion times and possible failures.
+
+### Disk Space
+
+You need space for the source model, intermediate F16 GGUF, and final quantized files simultaneously:
+
+| File | Size |
+|:-----|:-----|
+| Source safetensors (bf16) | ~55 GB |
+| Intermediate F16 GGUF | ~55 GB |
+| Q5_K_M output | ~19 GB |
+| Q4_K_M output | ~17 GB |
+
+**Peak disk usage: ~130 GB** if you keep the source + F16 GGUF + one quantized output. You can delete the F16 GGUF after quantization and the source safetensors after conversion to reclaim space.
+
+### CPU and Time
+
+Quantization is single-threaded for the actual weight conversion (multi-threaded for I/O). Expect:
+
+| Machine | Approximate Time |
+|:--------|:-----------------|
+| Modern desktop (Ryzen 7 / i7, NVMe SSD) | ~10–20 min per quant |
+| Cloud instance (c5.4xlarge or similar) | ~10–15 min per quant |
+| Older machine / HDD | ~30–60 min per quant |
+
+The `convert_hf_to_gguf.py` step takes a similar amount of time.
+
+### Summary: Quantization Machine Spec
+
+| Resource | Minimum | Recommended |
+|:---------|:--------|:------------|
+| System RAM | 64 GB | 128 GB |
+| Free disk | 130 GB | 200 GB |
+| GPU | Not required | Not required |
+| CPU | Any modern x86_64 | Fast single-thread + NVMe |
+
+A cloud VM works well for this — spin up a high-memory instance, quantize, download the GGUFs, tear it down. No GPU costs.
+
+---
+
 ## Conversion Pipeline
 
 ### Prerequisites
@@ -33,7 +87,7 @@ Unsloth's Dynamic 2.0 quantization selectively adjusts precision per-layer rathe
 # Clone and build llama.cpp
 git clone https://github.com/ggml-org/llama.cpp
 cd llama.cpp
-cmake -B build -DGGML_CUDA=ON    # or -DGGML_METAL=ON for Mac
+cmake -B build -DGGML_CUDA=ON    # or -DGGML_METAL=ON for Mac, or omit for CPU-only
 cmake --build build --config Release -j
 
 # Install Python dependencies for conversion
@@ -61,7 +115,7 @@ python convert_hf_to_gguf.py ./GeoLLM-27B --outtype f16 --outfile GeoLLM-27B-f16
 ./build/bin/llama-quantize GeoLLM-27B-f16.gguf GeoLLM-27B-Q4_K_M.gguf Q4_K_M
 ```
 
-You can delete the F16 GGUF after quantization to reclaim disk space.
+You can delete the F16 GGUF and source safetensors after quantization to reclaim ~110 GB of disk space.
 
 ---
 
