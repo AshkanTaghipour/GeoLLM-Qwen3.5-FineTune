@@ -1,6 +1,6 @@
 # GeoLLM-Qwen3.5-FineTune
 
-**LoRA fine-tuning and benchmarking of the Qwen 3.5 model family (0.8B -- 27B) for mineral exploration geology, targeting Western Australian and Queensland geological domains.**
+**LoRA fine-tuning and benchmarking of the Qwen 3.5 model family (0.8B -- 27B) for mineral exploration geology, targeting the Western Australian geological domain.**
 
 Fine-tuned models are available on HuggingFace and can be used for geological interpretation, exploration planning, deposit model analysis, geochemistry, geophysics, and drilling strategy questions.
 
@@ -57,7 +57,7 @@ tokenizer = AutoTokenizer.from_pretrained(model_name)
 model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype="bfloat16", device_map="auto")
 
 messages = [
-    {"role": "system", "content": "You are a specialist geologist with expertise in Western Australian and Queensland mineral exploration."},
+    {"role": "system", "content": "You are a specialist geologist with expertise in Western Australian mineral exploration."},
     {"role": "user", "content": "What geophysical methods would you recommend for targeting komatiite-hosted nickel sulphide deposits in the Eastern Goldfields?"},
 ]
 
@@ -102,7 +102,7 @@ python evaluate.py --model_dir ./finetuned_lora --run_name "my-eval"
 
 ## Dataset
 
-The training dataset contains **505 expert-curated examples** covering mineral exploration geology for Western Australia and Queensland:
+The training dataset was constructed from ~300 recent mineral exploration reports sourced from [WAMEX](https://www.dmp.wa.gov.au/WAMEX-Minerals-Exploration-1476.aspx) (Western Australia Mineral Exploration Index). Reports were OCR-processed, then an LLM generated expert-style QA and chain-of-thought pairs that were human-reviewed for geological accuracy. See the [dataset card](https://huggingface.co/datasets/AshkanTaghipour/mineral-exploration-geology-qa) for full methodology.
 
 | Split | QA Pairs | CoT Pairs | Total |
 |:------|:---------|:----------|:------|

@@ -1,6 +1,6 @@
 # Benchmark Results and Analysis
 
-Comprehensive benchmark of five Qwen 3.5 dense models (0.8B -- 27B parameters), each fine-tuned with identical LoRA hyperparameters on the same mineral exploration geology dataset.
+Comprehensive benchmark of five Qwen 3.5 dense models (0.8B -- 27B parameters), each fine-tuned with identical LoRA hyperparameters on the same Western Australian mineral exploration geology dataset.
 
 **Training configuration:** 5 epochs, bf16 LoRA (r=16, alpha=16), adamw_8bit optimizer, cosine LR schedule (2e-4, 10% warmup), effective batch size 16, max sequence length 2048. All experiments run on a single NVIDIA A100-80GB GPU.
 
